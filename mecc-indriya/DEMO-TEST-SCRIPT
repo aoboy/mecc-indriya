@@ -1,0 +1,62 @@
+TIMEOUT(999999999999);
+nrNodes=10;
+nrRounds = 1;
+nr_msgs  = 0;
+idx=1
+
+nodes_starting = true;
+nr_booted=0;
+
+
+/* Wait until all nodes have started */
+while (nodes_starting) {
+
+  YIELD_THEN_WAIT_UNTIL(msg.startsWith("Starting"));
+  nr_booted = nr_booted + 1;
+
+  log.log("Node " + id + "booted\n");
+  //booted[id] = true;
+  if (nr_booted == nrNodes){
+       nodes_starting = false;
+       break;
+   }
+}
+while(true){
+    GENERATE_MSG(500, "sleep");
+    YIELD_THEN_WAIT_UNTIL(msg.equals("sleep"));
+    
+    idx=1;
+    while(idx <= nrNodes){
+         write(sim.getMoteWithID(idx), "newround");
+         idx = idx + 1;
+         //log.log("Node " + id + " reached here\n");
+    }    
+            
+    while (true) {
+        if( msg.startsWith(">:")){
+            log.log(msg+"\n");
+            nr_msgs = nr_msgs + 1;
+            /*all nodes have converged
+            lets begin a new round*/
+            if(nr_msgs == nrNodes){
+                nr_msgs = 1;
+
+                while(nr_msgs <= nrNodes){
+                    write(sim.getMoteWithID(nr_msgs), "allconv");
+                    nr_msgs = nr_msgs +1;
+                }
+                //reset
+                nr_msgs = 0;
+                break;
+             } //end If;
+        } //end first IF
+        YIELD();
+    }//end inner while-loop
+
+    nrRounds = nrRounds +1;
+    if(nrRounds > 100){
+        break;
+    }
+}
+log.testOK(); /* Report test success and quit */
+
